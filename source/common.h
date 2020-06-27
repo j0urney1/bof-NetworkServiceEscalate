@@ -31,3 +31,6 @@
 #include "token.h"
 
 typedef datap BEACON;
+
+#define _ERROR(x) BeaconPrintf(CALLBACK_ERROR, "ERROR %s(): 0x%x", \
+		x, KERNEL32$GetLastError())
